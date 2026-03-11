@@ -184,6 +184,7 @@ function PinCard({
 }) {
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [draftLabel, setDraftLabel] = useState(pin.label);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     setDraftLabel(pin.label);
@@ -245,7 +246,11 @@ function PinCard({
         </div>
       </div>
       <p className="pin-preview">{pin.preview}</p>
+      {isExpanded ? <pre className="pin-fulltext">{pin.fullText}</pre> : null}
       <div className="pin-actions">
+        <button onClick={() => setIsExpanded((current) => !current)} title="Expand pin content" type="button">
+          <span>{isExpanded ? "Collapse" : "Expand"}</span>
+        </button>
         <button onClick={() => void onJump(pin)} title="Jump to source" type="button">
           <JumpIcon />
           <span>Jump</span>

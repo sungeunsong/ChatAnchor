@@ -6,6 +6,12 @@ export default defineManifest({
   description: "Pin important answers in ChatGPT and Gemini, then jump back instantly.",
   version: "0.1.0",
   permissions: ["storage", "sidePanel", "tabs"],
+  icons: {
+    "16": "icons/icon16-v3.png",
+    "32": "icons/icon32-v3.png",
+    "48": "icons/icon48-v3.png",
+    "128": "icons/icon128-v3.png",
+  },
   host_permissions: [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
@@ -30,5 +36,9 @@ export default defineManifest({
   },
   action: {
     default_title: "ChatAnchor",
+    default_icon: {
+      "16": "icons/icon16-v3.png",
+      "32": "icons/icon32-v3.png",
+    },
   },
 });

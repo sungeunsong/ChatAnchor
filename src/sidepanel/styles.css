@@ -142,9 +142,24 @@ button {
   white-space: pre-wrap;
 }
 
+.pin-fulltext {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.9);
+  color: #1e293b;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: -2px 0 14px;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
 .pin-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
