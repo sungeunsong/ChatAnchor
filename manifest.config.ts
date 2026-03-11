@@ -5,7 +5,7 @@ export default defineManifest({
   name: "ChatAnchor",
   description: "Pin important answers in ChatGPT and Gemini, then jump back instantly.",
   version: "0.1.0",
-  permissions: ["storage", "sidePanel", "tabs", "scripting"],
+  permissions: ["storage", "sidePanel", "tabs"],
   icons: {
     "16": "icons/icon16-v3.png",
     "32": "icons/icon32-v3.png",

@@ -78,20 +78,15 @@ button {
 
 .search-controls {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   margin-bottom: 16px;
 }
 
-.search-controls.search-only {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .current-control {
   display: flex;
-  justify-content: flex-start;
-  min-width: 0;
+  justify-content: flex-end;
 }
 
 .current-toggle {
@@ -104,6 +99,7 @@ button {
 }
 
 .tooltip-anchor {
+  position: relative;
   display: inline-flex;
   align-items: center;
   color: #64748b;
@@ -113,6 +109,31 @@ button {
 .tooltip-anchor:hover,
 .tooltip-anchor:focus-visible {
   color: #0f172a;
+}
+
+.tooltip-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  width: 180px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0;
+  padding: 8px 10px;
+  pointer-events: none;
+  text-align: center;
+  transform: translateX(-50%) translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.tooltip-anchor:hover .tooltip-bubble,
+.tooltip-anchor:focus-visible .tooltip-bubble {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .switch {
