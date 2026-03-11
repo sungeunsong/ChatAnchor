@@ -1,6 +1,7 @@
 import type { ActiveConversation, PinnedItem } from "../shared/types";
 import {
   buildPinFromText,
+  extractPreservedText,
   normalizeText,
   PIN_BUTTON_ATTR,
   scrollToTarget,
@@ -15,9 +16,7 @@ function getMessageContent(article: HTMLElement): HTMLElement {
 }
 
 function getPreservedText(article: HTMLElement): string {
-  const clone = getMessageContent(article).cloneNode(true) as HTMLElement;
-  clone.querySelectorAll(`[${PIN_BUTTON_ATTR}]`).forEach((element) => element.remove());
-  return clone.innerText.replace(/\n{3,}/g, "\n\n").trim();
+  return extractPreservedText(getMessageContent(article));
 }
 
 function getConversationId(): string {

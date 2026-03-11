@@ -154,7 +154,47 @@ button {
   line-height: 1.55;
   margin: -2px 0 14px;
   padding: 12px;
+}
+
+.pin-fulltext-paragraph {
+  margin: 0 0 12px;
   white-space: pre-wrap;
+}
+
+.pin-fulltext-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.code-block {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  background: #e5e7eb;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.code-block:last-child {
+  margin-bottom: 0;
+}
+
+.code-block-label {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 12px;
+  text-transform: capitalize;
+}
+
+.code-block-body {
+  margin: 0;
+  overflow: auto;
+  color: #1f2937;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px;
+  white-space: pre;
 }
 
 .pin-actions {

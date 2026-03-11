@@ -135,12 +135,7 @@ async function jumpToPin(pin: PinnedItem): Promise<boolean> {
 }
 
 async function openConversation(pin: PinnedItem): Promise<void> {
-  const tabId = await getCurrentTabId();
-  if (!tabId) {
-    return;
-  }
-
-  await chrome.tabs.update(tabId, { url: pin.pageUrl });
+  await chrome.tabs.create({ url: pin.pageUrl, active: true });
 }
 
 async function copyPin(pin: PinnedItem): Promise<boolean> {
@@ -163,6 +158,64 @@ function formatDate(timestamp: number): string {
 
 function formatSiteLabel(site: SupportedSite): string {
   return site === "chatgpt" ? "ChatGPT" : "Gemini";
+}
+
+type ContentSegment =
+  | { type: "text"; value: string }
+  | { type: "code"; value: string; language: string };
+
+function parseFullText(fullText: string): ContentSegment[] {
+  const segments: ContentSegment[] = [];
+  const fencePattern = /```([\w#+-]*)\n([\s\S]*?)```/g;
+  let lastIndex = 0;
+
+  for (const match of fullText.matchAll(fencePattern)) {
+    const matchIndex = match.index ?? 0;
+    if (matchIndex > lastIndex) {
+      const textValue = fullText.slice(lastIndex, matchIndex).trim();
+      if (textValue) {
+        segments.push({ type: "text", value: textValue });
+      }
+    }
+
+    segments.push({
+      type: "code",
+      language: match[1]?.trim() ?? "",
+      value: match[2]?.replace(/\n$/, "") ?? "",
+    });
+
+    lastIndex = matchIndex + match[0].length;
+  }
+
+  if (lastIndex < fullText.length) {
+    const textValue = fullText.slice(lastIndex).trim();
+    if (textValue) {
+      segments.push({ type: "text", value: textValue });
+    }
+  }
+
+  return segments.length > 0 ? segments : [{ type: "text", value: fullText }];
+}
+
+function ExpandedContent({ fullText }: { fullText: string }) {
+  const segments = useMemo(() => parseFullText(fullText), [fullText]);
+
+  return (
+    <div className="pin-fulltext">
+      {segments.map((segment, index) =>
+        segment.type === "code" ? (
+          <section className="code-block" key={`${segment.type}-${index}`}>
+            {segment.language ? <div className="code-block-label">{segment.language}</div> : null}
+            <pre className="code-block-body">{segment.value}</pre>
+          </section>
+        ) : (
+          <p className="pin-fulltext-paragraph" key={`${segment.type}-${index}`}>
+            {segment.value}
+          </p>
+        ),
+      )}
+    </div>
+  );
 }
 
 function PinCard({
@@ -246,7 +299,7 @@ function PinCard({
         </div>
       </div>
       <p className="pin-preview">{pin.preview}</p>
-      {isExpanded ? <pre className="pin-fulltext">{pin.fullText}</pre> : null}
+      {isExpanded ? <ExpandedContent fullText={pin.fullText} /> : null}
       <div className="pin-actions">
         <button onClick={() => setIsExpanded((current) => !current)} title="Expand pin content" type="button">
           <span>{isExpanded ? "Collapse" : "Expand"}</span>
