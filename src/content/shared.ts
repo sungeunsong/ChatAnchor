@@ -29,8 +29,6 @@ const BLOCK_TAGS = new Set([
   "P",
   "PRE",
   "SECTION",
-  "TABLE",
-  "TR",
   "UL",
 ]);
 
@@ -111,6 +109,28 @@ function getCodeBlockText(element: HTMLElement): string {
     .trimEnd();
 }
 
+function serializeTable(element: HTMLTableElement): string {
+  const rows = Array.from(element.querySelectorAll("tr"))
+    .map((row) =>
+      Array.from(row.querySelectorAll("th, td")).map((cell) =>
+        normalizeText(cell.textContent ?? ""),
+      ),
+    )
+    .filter((cells) => cells.some(Boolean));
+
+  if (rows.length === 0) {
+    return "";
+  }
+
+  const serializedRows = rows.map((cells) => cells.join("\t")).join("\n");
+  return `\n[[TABLE]]\n${serializedRows}\n[[/TABLE]]\n`;
+}
+
+function serializeMathBlock(element: HTMLElement): string {
+  const mathSource = element.getAttribute("data-math")?.trim();
+  return mathSource ? `\n[[MATH]]\n${mathSource}\n[[/MATH]]\n` : "";
+}
+
 function serializeNode(node: Node, preserveWhitespace = false): string {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent ?? "";
@@ -128,6 +148,14 @@ function serializeNode(node: Node, preserveWhitespace = false): string {
     return "\n";
   }
 
+  if (tagName === "TABLE") {
+    return serializeTable(element as HTMLTableElement);
+  }
+
+  if (element.classList.contains("math-block") && element.hasAttribute("data-math")) {
+    return serializeMathBlock(element);
+  }
+
   if (isCodeBlockElement(element)) {
     const codeText = getCodeBlockText(element);
     if (!codeText) {
@@ -136,6 +164,20 @@ function serializeNode(node: Node, preserveWhitespace = false): string {
 
     const language = getCodeBlockLanguage(element);
     return `\n\`\`\`${language}\n${codeText}\n\`\`\`\n`;
+  }
+
+  if (tagName === "CODE") {
+    const inlineCode = (element.textContent ?? "").replace(/\r\n/g, "\n").trim();
+    return inlineCode ? `\`${inlineCode}\`` : "";
+  }
+
+  if (tagName === "BLOCKQUOTE") {
+    const quoteText = Array.from(element.childNodes)
+      .map((child) => serializeNode(child, preserveWhitespace))
+      .join("")
+      .trim();
+
+    return quoteText ? `\n[[QUOTE]]\n${quoteText}\n[[/QUOTE]]\n` : "";
   }
 
   if (tagName === "LI") {

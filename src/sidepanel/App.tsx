@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import katex from "katex";
 import { deletePin, getPins, updatePinLabel } from "../shared/storage";
 import type { ActiveConversation, PinnedItem, SupportedSite } from "../shared/types";
 
@@ -162,14 +164,25 @@ function formatSiteLabel(site: SupportedSite): string {
 
 type ContentSegment =
   | { type: "text"; value: string }
-  | { type: "code"; value: string; language: string };
+  | { type: "code"; value: string; language: string }
+  | { type: "math"; value: string }
+  | { type: "quote"; value: string }
+  | { type: "table"; rows: string[][] };
+
+function parseTableBlock(raw: string): string[][] {
+  return raw
+    .split("\n")
+    .map((line) => line.split("\t").map((cell) => cell.trim()))
+    .filter((row) => row.some(Boolean));
+}
 
 function parseFullText(fullText: string): ContentSegment[] {
   const segments: ContentSegment[] = [];
-  const fencePattern = /```([\w#+-]*)\n([\s\S]*?)```/g;
+  const blockPattern =
+    /```([\w#+-]*)\n([\s\S]*?)```|\[\[TABLE\]\]\n([\s\S]*?)\n\[\[\/TABLE\]\]|\[\[QUOTE\]\]\n([\s\S]*?)\n\[\[\/QUOTE\]\]|\[\[MATH\]\]\n([\s\S]*?)\n\[\[\/MATH\]\]/g;
   let lastIndex = 0;
 
-  for (const match of fullText.matchAll(fencePattern)) {
+  for (const match of fullText.matchAll(blockPattern)) {
     const matchIndex = match.index ?? 0;
     if (matchIndex > lastIndex) {
       const textValue = fullText.slice(lastIndex, matchIndex).trim();
@@ -178,11 +191,28 @@ function parseFullText(fullText: string): ContentSegment[] {
       }
     }
 
-    segments.push({
-      type: "code",
-      language: match[1]?.trim() ?? "",
-      value: match[2]?.replace(/\n$/, "") ?? "",
-    });
+    if (typeof match[5] === "string") {
+      segments.push({
+        type: "math",
+        value: match[5].trim(),
+      });
+    } else if (typeof match[4] === "string") {
+      segments.push({
+        type: "quote",
+        value: match[4].trim(),
+      });
+    } else if (typeof match[3] === "string") {
+      segments.push({
+        type: "table",
+        rows: parseTableBlock(match[3]),
+      });
+    } else {
+      segments.push({
+        type: "code",
+        language: match[1]?.trim() ?? "",
+        value: match[2]?.replace(/\n$/, "") ?? "",
+      });
+    }
 
     lastIndex = matchIndex + match[0].length;
   }
@@ -197,6 +227,51 @@ function parseFullText(fullText: string): ContentSegment[] {
   return segments.length > 0 ? segments : [{ type: "text", value: fullText }];
 }
 
+function MathBlock({ value }: { value: string }) {
+  const html = useMemo(() => {
+    try {
+      return katex.renderToString(value, {
+        displayMode: true,
+        throwOnError: false,
+      });
+    } catch {
+      return "";
+    }
+  }, [value]);
+
+  if (!html) {
+    return <pre className="math-fallback">{value}</pre>;
+  }
+
+  return <div className="math-block-render" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function renderInlineCode(text: string): ReactNode[] {
+  const parts: ReactNode[] = [];
+  const inlineCodePattern = /`([^`]+)`/g;
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(inlineCodePattern)) {
+    const matchIndex = match.index ?? 0;
+    if (matchIndex > lastIndex) {
+      parts.push(text.slice(lastIndex, matchIndex));
+    }
+
+    parts.push(
+      <code className="inline-code" key={`inline-${matchIndex}`}>
+        {match[1]}
+      </code>,
+    );
+    lastIndex = matchIndex + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+}
+
 function ExpandedContent({ fullText }: { fullText: string }) {
   const segments = useMemo(() => parseFullText(fullText), [fullText]);
 
@@ -208,9 +283,36 @@ function ExpandedContent({ fullText }: { fullText: string }) {
             {segment.language ? <div className="code-block-label">{segment.language}</div> : null}
             <pre className="code-block-body">{segment.value}</pre>
           </section>
+        ) : segment.type === "table" ? (
+          <div className="table-block" key={`${segment.type}-${index}`}>
+            <table className="pin-table">
+              <thead>
+                <tr>
+                  {segment.rows[0]?.map((cell, cellIndex) => <th key={`head-${cellIndex}`}>{cell}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {segment.rows.slice(1).map((row, rowIndex) => (
+                  <tr key={`row-${rowIndex}`}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={`cell-${rowIndex}-${cellIndex}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : segment.type === "math" ? (
+          <div className="math-block-shell" key={`${segment.type}-${index}`}>
+            <MathBlock value={segment.value} />
+          </div>
+        ) : segment.type === "quote" ? (
+          <blockquote className="quote-block" key={`${segment.type}-${index}`}>
+            {renderInlineCode(segment.value)}
+          </blockquote>
         ) : (
           <p className="pin-fulltext-paragraph" key={`${segment.type}-${index}`}>
-            {segment.value}
+            {renderInlineCode(segment.value)}
           </p>
         ),
       )}
