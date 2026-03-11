@@ -63,17 +63,30 @@ button {
 
 .search-input {
   width: 100%;
+  min-width: 0;
   border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.9);
   color: #0f172a;
   font: inherit;
-  margin-bottom: 12px;
   padding: 11px 13px;
 }
 
 .search-input::placeholder {
   color: #94a3b8;
+}
+
+.search-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.current-control {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .current-toggle {
@@ -82,7 +95,86 @@ button {
   gap: 8px;
   color: #475569;
   font-size: 13px;
-  margin-bottom: 16px;
+  white-space: nowrap;
+}
+
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: #64748b;
+  outline: none;
+}
+
+.tooltip-anchor:hover,
+.tooltip-anchor:focus-visible {
+  color: #0f172a;
+}
+
+.tooltip-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  width: 180px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0;
+  padding: 8px 10px;
+  pointer-events: none;
+  text-align: center;
+  transform: translateX(-50%) translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 5;
+}
+
+.tooltip-anchor:hover .tooltip-bubble,
+.tooltip-anchor:focus-visible .tooltip-bubble {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.switch {
+  position: relative;
+  display: inline-flex;
+}
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch-track {
+  display: inline-flex;
+  align-items: center;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  padding: 3px;
+  transition: background 0.15s ease;
+}
+
+.switch.active .switch-track {
+  background: #0f172a;
+}
+
+.switch-thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.switch.active .switch-thumb {
+  transform: translateX(16px);
 }
 
 .pin-list {

@@ -66,6 +66,17 @@ function LinkIcon() {
   );
 }
 
+function HelpIcon() {
+  return (
+    <svg aria-hidden="true" className="icon small" viewBox="0 0 16 16">
+      <path
+        d="M8 1.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 1a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Zm0 7.7a.8.8 0 1 1 0 1.6.8.8 0 0 1 0-1.6Zm0-5.2c1.1 0 1.9.6 1.9 1.6 0 .7-.4 1.1-.9 1.5-.5.4-.8.6-.8 1.2v.2h-1v-.3c0-.9.5-1.3 1-1.7.4-.3.7-.5.7-.9 0-.4-.4-.7-.9-.7s-.9.3-1 .8l-1-.2C6.2 5.7 7 5 8 5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 async function getCurrentTabId(): Promise<number | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab?.id ?? null;
@@ -483,12 +494,13 @@ export function App() {
   const visiblePins = useMemo(() => {
     let filteredPins = pins;
     const normalizedQuery = searchQuery.trim().toLowerCase();
+    const shouldFilterCurrentChat = currentChatOnly && siteFilter !== "all";
 
     if (siteFilter !== "all") {
       filteredPins = filteredPins.filter((pin) => pin.site === siteFilter);
     }
 
-    if (currentChatOnly && activeConversation) {
+    if (shouldFilterCurrentChat && activeConversation) {
       filteredPins = filteredPins.filter(
         (pin) =>
           pin.site === activeConversation.site &&
@@ -550,21 +562,39 @@ export function App() {
             </button>
           ))}
         </div>
-        <input
-          className="search-input"
-          onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search pins"
-          type="search"
-          value={searchQuery}
-        />
-        <label className="current-toggle">
+        <div className="search-controls">
           <input
-            checked={currentChatOnly}
-            onChange={(event) => setCurrentChatOnly(event.target.checked)}
-            type="checkbox"
+            className="search-input"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search pins"
+            type="search"
+            value={searchQuery}
           />
-          <span>Current chat only</span>
-        </label>
+          {siteFilter !== "all" ? (
+            <div className="current-control">
+              <label className="current-toggle" htmlFor="current-chat-toggle">
+                <span>Current</span>
+                <span className="tooltip-anchor" tabIndex={0}>
+                  <HelpIcon />
+                  <span className="tooltip-bubble">
+                    현재 보고 있는 채팅방에서 저장한 핀만 목록에 표시합니다. 끄면 같은 서비스의 다른 채팅방에서 저장한 핀도 함께 볼 수 있습니다.
+                  </span>
+                </span>
+                <span className={`switch ${currentChatOnly ? "active" : ""}`}>
+                  <input
+                    checked={currentChatOnly}
+                    id="current-chat-toggle"
+                    onChange={(event) => setCurrentChatOnly(event.target.checked)}
+                    type="checkbox"
+                  />
+                  <span className="switch-track">
+                    <span className="switch-thumb" />
+                  </span>
+                </span>
+              </label>
+            </div>
+          ) : null}
+        </div>
       </header>
 
       <section className="pin-list">
