@@ -38,14 +38,14 @@ button {
   text-transform: uppercase;
 }
 
-.view-toggle {
+.service-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
-.view-toggle button,
+.service-tabs button,
 .pin-actions button {
   appearance: none;
   border: 1px solid rgba(15, 23, 42, 0.12);
@@ -56,9 +56,33 @@ button {
   padding: 10px 12px;
 }
 
-.view-toggle button.active {
+.service-tabs button.active {
   background: #0f172a;
   color: #fff;
+}
+
+.search-input {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font: inherit;
+  margin-bottom: 12px;
+  padding: 11px 13px;
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+.current-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 13px;
+  margin-bottom: 16px;
 }
 
 .pin-list {
@@ -102,6 +126,13 @@ button {
   align-items: center;
   color: #64748b;
   font-size: 12px;
+}
+
+.site-chip {
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  padding: 3px 8px;
 }
 
 .pin-preview {

@@ -24,7 +24,7 @@ export async function getPins(): Promise<PinnedItem[]> {
 export async function saveConversation(meta: ConversationMeta): Promise<void> {
   const state = await readState();
   const nextConversations = state.conversations.filter(
-    (item) => item.conversationId !== meta.conversationId,
+    (item) => !(item.site === meta.site && item.conversationId === meta.conversationId),
   );
 
   nextConversations.unshift(meta);

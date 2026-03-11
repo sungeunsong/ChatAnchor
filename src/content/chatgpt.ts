@@ -1,15 +1,10 @@
 import type { ActiveConversation, PinnedItem } from "../shared/types";
-
-const PIN_BUTTON_ATTR = "data-llm-note-pin";
-const LABEL_LENGTH = 16;
-
-function normalizeText(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
-}
-
-function trimForLabel(text: string): string {
-  return normalizeText(text).slice(0, LABEL_LENGTH).trim();
-}
+import {
+  buildPinFromText,
+  normalizeText,
+  PIN_BUTTON_ATTR,
+  scrollToTarget,
+} from "./shared";
 
 function getMessageContent(article: HTMLElement): HTMLElement {
   return (
@@ -62,27 +57,8 @@ export function getActiveConversation(): ActiveConversation {
 
 function buildPin(article: HTMLElement, messageIndex: number): PinnedItem | null {
   const fullText = getPreservedText(article);
-  if (!fullText) {
-    return null;
-  }
-
   const conversation = getActiveConversation();
-  const createdAt = Date.now();
-  const preview = normalizeText(fullText).slice(0, 180);
-  const label = trimForLabel(fullText) || "Untitled pin";
-
-  return {
-    id: `${conversation.conversationId}:${messageIndex}`,
-    site: "chatgpt",
-    conversationId: conversation.conversationId,
-    conversationTitle: conversation.title,
-    pageUrl: conversation.pageUrl,
-    label,
-    preview,
-    fullText,
-    messageIndex,
-    createdAt,
-  };
+  return buildPinFromText("chatgpt", conversation, fullText, messageIndex);
 }
 
 function createPinButton(article: HTMLElement, messageIndex: number): HTMLButtonElement {
@@ -132,49 +108,6 @@ export function injectPinButtons(): void {
     wrapper.appendChild(createPinButton(article, index));
 
     anchor.prepend(wrapper);
-  });
-}
-
-function getScrollableAncestor(target: HTMLElement): HTMLElement | null {
-  let current = target.parentElement;
-
-  while (current) {
-    const style = window.getComputedStyle(current);
-    const overflowY = style.overflowY;
-    const isScrollable =
-      (overflowY === "auto" || overflowY === "scroll") &&
-      current.scrollHeight > current.clientHeight + 20;
-
-    if (isScrollable) {
-      return current;
-    }
-
-    current = current.parentElement;
-  }
-
-  return null;
-}
-
-function scrollToTarget(target: HTMLElement): void {
-  const scrollableAncestor = getScrollableAncestor(target);
-
-  if (scrollableAncestor) {
-    const ancestorRect = scrollableAncestor.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const nextTop =
-      scrollableAncestor.scrollTop + (targetRect.top - ancestorRect.top) - 20;
-
-    scrollableAncestor.scrollTo({
-      top: Math.max(nextTop, 0),
-      behavior: "smooth",
-    });
-    return;
-  }
-
-  const offsetTop = window.scrollY + target.getBoundingClientRect().top - 20;
-  window.scrollTo({
-    top: Math.max(offsetTop, 0),
-    behavior: "smooth",
   });
 }
 

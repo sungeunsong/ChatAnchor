@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { deletePin, getPins, updatePinLabel } from "../shared/storage";
-import type { ActiveConversation, PinnedItem } from "../shared/types";
+import type { ActiveConversation, PinnedItem, SupportedSite } from "../shared/types";
 
-type ViewMode = "current" | "all";
+type SiteFilter = SupportedSite | "all";
 
 function PencilIcon() {
   return (
@@ -71,7 +71,7 @@ async function getCurrentTabId(): Promise<number | null> {
 
 function waitForTabComplete(tabId: number): Promise<void> {
   return new Promise((resolve) => {
-    const listener = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+    const listener = (updatedTabId: number, changeInfo: { status?: string }) => {
       if (updatedTabId === tabId && changeInfo.status === "complete") {
         chrome.tabs.onUpdated.removeListener(listener);
         resolve();
@@ -108,6 +108,7 @@ async function jumpToPin(pin: PinnedItem): Promise<boolean> {
       const response = (await chrome.tabs.sendMessage(tabId, {
         type: "JUMP_TO_PIN",
         payload: {
+          site: pin.site,
           conversationId: pin.conversationId,
           messageIndex: pin.messageIndex,
           preview: pin.preview,
@@ -121,7 +122,10 @@ async function jumpToPin(pin: PinnedItem): Promise<boolean> {
   };
 
   const currentConversation = await getActiveConversationFromTab();
-  if (currentConversation?.conversationId === pin.conversationId) {
+  if (
+    currentConversation?.site === pin.site &&
+    currentConversation.conversationId === pin.conversationId
+  ) {
     return sendJumpMessage();
   }
 
@@ -155,6 +159,10 @@ function formatDate(timestamp: number): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(timestamp);
+}
+
+function formatSiteLabel(site: SupportedSite): string {
+  return site === "chatgpt" ? "ChatGPT" : "Gemini";
 }
 
 function PinCard({
@@ -227,6 +235,7 @@ function PinCard({
         </div>
         <div className="pin-meta">
           <span>{formatDate(pin.createdAt)}</span>
+          <span className="site-chip">{formatSiteLabel(pin.site)}</span>
           {showConversation ? (
             <button className="conversation-link" onClick={() => void onOpenConversation(pin)} type="button">
               <span className="conversation-link-text">{pin.conversationTitle}</span>
@@ -257,7 +266,9 @@ function PinCard({
 export function App() {
   const [pins, setPins] = useState<PinnedItem[]>([]);
   const [activeConversation, setActiveConversation] = useState<ActiveConversation | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("current");
+  const [siteFilter, setSiteFilter] = useState<SiteFilter>("all");
+  const [currentChatOnly, setCurrentChatOnly] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState("");
 
   async function refresh(): Promise<void> {
@@ -288,16 +299,54 @@ export function App() {
     };
 
     chrome.storage.onChanged.addListener(storageListener);
-    return () => chrome.storage.onChanged.removeListener(storageListener);
+    const runtimeListener = (message: unknown) => {
+      const candidate = message as { type?: string };
+      if (candidate.type === "ACTIVE_TAB_CHANGED") {
+        void refresh();
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(runtimeListener);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(storageListener);
+      chrome.runtime.onMessage.removeListener(runtimeListener);
+    };
   }, []);
 
+  useEffect(() => {
+    if (activeConversation) {
+      setSiteFilter(activeConversation.site);
+    }
+  }, [activeConversation?.site]);
+
   const visiblePins = useMemo(() => {
-    if (viewMode === "all" || !activeConversation) {
-      return pins;
+    let filteredPins = pins;
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    if (siteFilter !== "all") {
+      filteredPins = filteredPins.filter((pin) => pin.site === siteFilter);
     }
 
-    return pins.filter((pin) => pin.conversationId === activeConversation.conversationId);
-  }, [activeConversation, pins, viewMode]);
+    if (currentChatOnly && activeConversation) {
+      filteredPins = filteredPins.filter(
+        (pin) =>
+          pin.site === activeConversation.site &&
+          pin.conversationId === activeConversation.conversationId,
+      );
+    }
+
+    if (normalizedQuery) {
+      filteredPins = filteredPins.filter((pin) =>
+        [pin.label, pin.preview, pin.conversationTitle]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery),
+      );
+    }
+
+    return filteredPins;
+  }, [activeConversation, currentChatOnly, pins, searchQuery, siteFilter]);
 
   async function handleDelete(pinId: string): Promise<void> {
     await deletePin(pinId);
@@ -327,31 +376,40 @@ export function App() {
   return (
     <main className="panel-shell">
       <header className="panel-header">
-        <p className="eyebrow">LLM Note</p>
-        <h1>{activeConversation?.title ?? "ChatGPT not detected"}</h1>
-        <div className="view-toggle">
-          <button
-            className={viewMode === "current" ? "active" : ""}
-            onClick={() => setViewMode("current")}
-            type="button"
-          >
-            Current
-          </button>
-          <button
-            className={viewMode === "all" ? "active" : ""}
-            onClick={() => setViewMode("all")}
-            type="button"
-          >
-            All
-          </button>
+        <p className="eyebrow">Chat Anchor</p>
+        <h1>{activeConversation?.title ?? "AI chat not detected"}</h1>
+        <div className="service-tabs">
+          {(["chatgpt", "gemini", "all"] as const).map((site) => (
+            <button
+              className={siteFilter === site ? "active" : ""}
+              key={site}
+              onClick={() => setSiteFilter(site)}
+              type="button"
+            >
+              {site === "all" ? "All" : formatSiteLabel(site)}
+            </button>
+          ))}
         </div>
+        <input
+          className="search-input"
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Search pins"
+          type="search"
+          value={searchQuery}
+        />
+        <label className="current-toggle">
+          <input
+            checked={currentChatOnly}
+            onChange={(event) => setCurrentChatOnly(event.target.checked)}
+            type="checkbox"
+          />
+          <span>Current chat only</span>
+        </label>
       </header>
 
       <section className="pin-list">
         {visiblePins.length === 0 ? (
-          <div className="empty-state">
-            {viewMode === "current" ? "No pins in this chat yet." : "No pins saved yet."}
-          </div>
+          <div className="empty-state">No pins match this filter yet.</div>
         ) : (
           visiblePins.map((pin) => (
             <PinCard
@@ -362,7 +420,7 @@ export function App() {
               onOpenConversation={handleOpenConversation}
               onSaveLabel={handleSaveLabel}
               pin={pin}
-              showConversation={viewMode === "all"}
+              showConversation={siteFilter === "all" || !currentChatOnly}
             />
           ))
         )}

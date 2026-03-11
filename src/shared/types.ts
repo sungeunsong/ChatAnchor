@@ -1,6 +1,7 @@
-export type SupportedSite = "chatgpt";
+export type SupportedSite = "chatgpt" | "gemini";
 
 export type ConversationMeta = {
+  site: SupportedSite;
   conversationId: string;
   title: string;
   pageUrl: string;
@@ -35,6 +36,10 @@ export type ActiveConversation = {
 export type RuntimeMessage =
   | { type: "GET_ACTIVE_CONVERSATION" }
   | { type: "ACTIVE_CONVERSATION_CHANGED"; payload: ActiveConversation }
-  | { type: "JUMP_TO_PIN"; payload: Pick<PinnedItem, "conversationId" | "messageIndex" | "preview"> }
+  | { type: "ACTIVE_TAB_CHANGED"; payload: { tabId: number | null; url?: string } }
+  | {
+      type: "JUMP_TO_PIN";
+      payload: Pick<PinnedItem, "site" | "conversationId" | "messageIndex" | "preview">;
+    }
   | { type: "PIN_CREATED"; payload: PinnedItem }
   | { type: "PIN_DELETED"; payload: { pinId: string } };
