@@ -1,4 +1,4 @@
-import type { ActiveConversation, PinnedItem } from "../shared/types";
+import type { ActiveConversation, PinnedItem, StorageShape } from "../shared/types";
 import {
   buildPinFromText,
   extractPreservedText,
@@ -31,9 +31,7 @@ function getCandidateElements(): HTMLElement[] {
 
   selectors.forEach((selector) => {
     document.querySelectorAll<HTMLElement>(selector).forEach((element) => {
-      if (normalizeText(element.innerText)) {
-        elements.add(element);
-      }
+      elements.add(element);
     });
   });
 
@@ -61,8 +59,7 @@ function getPreservedText(element: HTMLElement): string {
 function getAssistantBlocks(): HTMLElement[] {
   return getCandidateElements()
     .map((element) => getMessageContainer(element))
-    .filter((element, index, array) => array.indexOf(element) === index)
-    .filter((element) => normalizeText(getPreservedText(element)).length > 0);
+    .filter((element, index, array) => array.indexOf(element) === index);
 }
 
 export function getActiveConversation(): ActiveConversation {
@@ -79,18 +76,105 @@ function buildPin(element: HTMLElement, messageIndex: number): PinnedItem | null
   return buildPinFromText("gemini", getActiveConversation(), fullText, messageIndex);
 }
 
-function createPinButton(element: HTMLElement, messageIndex: number): HTMLButtonElement {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = "Pin";
-  button.className = "llm-note-pin-button";
-  button.setAttribute(PIN_BUTTON_ATTR, "true");
+const STORAGE_KEY = "llm-note-storage";
+type PinButton = HTMLButtonElement & { __llmNoteBound?: boolean };
+
+let pinnedKeys = new Set<string>();
+let isPinnedReady = false;
+let loadingPinnedKeys: Promise<void> | null = null;
+let storageListenerBound = false;
+
+function createMessageKey(conversationId: string, messageIndex: number): string {
+  return `${conversationId}:${messageIndex}`;
+}
+
+async function loadPinnedKeys(): Promise<void> {
+  const result = await chrome.storage.local.get(STORAGE_KEY);
+  const state = (result[STORAGE_KEY] as StorageShape | undefined) ?? {
+    pins: [],
+    conversations: [],
+  };
+
+  pinnedKeys = new Set(
+    state.pins
+      .filter((pin) => pin.site === "gemini")
+      .map((pin) => createMessageKey(pin.conversationId, pin.messageIndex)),
+  );
+  isPinnedReady = true;
+}
+
+async function ensurePinnedReady(): Promise<void> {
+  if (isPinnedReady) {
+    return;
+  }
+
+  if (!loadingPinnedKeys) {
+    loadingPinnedKeys = loadPinnedKeys().finally(() => {
+      loadingPinnedKeys = null;
+    });
+  }
+
+  await loadingPinnedKeys;
+}
+
+function ensurePinnedSyncListener(): void {
+  if (storageListenerBound) {
+    return;
+  }
+
+  storageListenerBound = true;
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local" || !changes[STORAGE_KEY]) {
+      return;
+    }
+
+    isPinnedReady = false;
+    void ensurePinnedReady().then(() => {
+      injectPinButtons();
+    });
+  });
+}
+
+function getMessageIndex(element: HTMLElement, fallbackMessageIndex: number): number {
+  const parsed = Number(element.dataset.llmNoteMessageIndex ?? String(fallbackMessageIndex));
+  return Number.isNaN(parsed) ? fallbackMessageIndex : parsed;
+}
+
+function isPinned(element: HTMLElement, fallbackMessageIndex: number): boolean {
+  return pinnedKeys.has(createMessageKey(getConversationId(), getMessageIndex(element, fallbackMessageIndex)));
+}
+
+function setButtonLabel(button: HTMLButtonElement, pinned: boolean): void {
+  button.textContent = pinned ? "Unpin" : "Pin";
+  button.classList.toggle("is-pinned", pinned);
+}
+
+function bindPinButton(button: PinButton, element: HTMLElement, fallbackMessageIndex: number): void {
+  if (button.__llmNoteBound) {
+    return;
+  }
+
+  button.__llmNoteBound = true;
   button.addEventListener("click", async (event) => {
     event.preventDefault();
     event.stopPropagation();
 
+    const messageIndex = getMessageIndex(element, fallbackMessageIndex);
     const pin = buildPin(element, messageIndex);
     if (!pin) {
+      return;
+    }
+
+    const key = createMessageKey(pin.conversationId, pin.messageIndex);
+    const pinned = pinnedKeys.has(key);
+
+    if (pinned) {
+      await chrome.runtime.sendMessage({
+        type: "PIN_DELETED",
+        payload: { pinId: pin.id },
+      });
+      pinnedKeys.delete(key);
+      setButtonLabel(button, false);
       return;
     }
 
@@ -98,23 +182,40 @@ function createPinButton(element: HTMLElement, messageIndex: number): HTMLButton
       type: "PIN_CREATED",
       payload: pin,
     });
-
-    button.textContent = "Pinned";
-    window.setTimeout(() => {
-      button.textContent = "Pin";
-    }, 1200);
+    pinnedKeys.add(key);
+    setButtonLabel(button, true);
   });
+}
+
+function createPinButton(element: HTMLElement, messageIndex: number): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "llm-note-pin-button";
+  button.setAttribute(PIN_BUTTON_ATTR, "true");
+  setButtonLabel(button, isPinned(element, messageIndex));
+  bindPinButton(button as PinButton, element, messageIndex);
 
   return button;
 }
 
 export function injectPinButtons(): void {
+  ensurePinnedSyncListener();
+  if (!isPinnedReady) {
+    void ensurePinnedReady().then(() => {
+      injectPinButtons();
+    });
+    return;
+  }
+
   const blocks = getAssistantBlocks();
 
   blocks.forEach((block, index) => {
     block.dataset.llmNoteMessageIndex = String(index);
 
-    if (block.querySelector(`[${PIN_BUTTON_ATTR}]`)) {
+    const existingButton = block.querySelector<HTMLButtonElement>(`[${PIN_BUTTON_ATTR}]`);
+    if (existingButton) {
+      setButtonLabel(existingButton, isPinned(block, index));
+      bindPinButton(existingButton as PinButton, block, index);
       return;
     }
 

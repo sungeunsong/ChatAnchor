@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "zip": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-extension.ps1",
+    "build:zip": "npm run build && npm run zip"
   },
   "keywords": [],
   "author": "",

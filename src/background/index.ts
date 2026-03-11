@@ -1,4 +1,4 @@
-import { saveConversation, upsertPin } from "../shared/storage";
+import { deletePin, saveConversation, upsertPin } from "../shared/storage";
 import type { RuntimeMessage } from "../shared/types";
 
 function notifyActiveTabChanged(tabId: number | null, url?: string): void {
@@ -37,6 +37,10 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 chrome.runtime.onMessage.addListener((message: RuntimeMessage) => {
   if (message.type === "PIN_CREATED") {
     void upsertPin(message.payload);
+  }
+
+  if (message.type === "PIN_DELETED") {
+    void deletePin(message.payload.pinId);
   }
 
   if (message.type === "ACTIVE_CONVERSATION_CHANGED") {

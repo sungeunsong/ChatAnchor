@@ -21,6 +21,16 @@
   background: #e2e8f0;
 }
 
+.llm-note-pin-button.is-pinned {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.llm-note-pin-button.is-pinned:hover {
+  background: #fef3c7;
+}
+
 .llm-note-highlight {
   outline: 2px solid #f59e0b;
   outline-offset: 6px;

@@ -1,10 +1,15 @@
 import type { ConversationMeta, PinnedItem, StorageShape } from "./types";
 
 const STORAGE_KEY = "llm-note-storage";
+export const EXTENSION_SETTINGS_KEY = "llm-note-settings";
 
 const defaultState: StorageShape = {
   pins: [],
   conversations: [],
+};
+
+const defaultSettings = {
+  enabled: true,
 };
 
 async function readState(): Promise<StorageShape> {
@@ -98,5 +103,19 @@ export async function updatePinLabel(pinId: string, label: string): Promise<void
           }
         : item,
     ),
+  });
+}
+
+export async function getExtensionEnabled(): Promise<boolean> {
+  const result = await chrome.storage.local.get(EXTENSION_SETTINGS_KEY);
+  const settings = result[EXTENSION_SETTINGS_KEY] as { enabled?: boolean } | undefined;
+  return settings?.enabled ?? defaultSettings.enabled;
+}
+
+export async function setExtensionEnabled(enabled: boolean): Promise<void> {
+  await chrome.storage.local.set({
+    [EXTENSION_SETTINGS_KEY]: {
+      enabled,
+    },
   });
 }

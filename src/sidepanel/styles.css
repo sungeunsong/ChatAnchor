@@ -29,6 +29,31 @@ button {
   line-height: 1.3;
 }
 
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.retry-detect-button {
+  appearance: none;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.retry-detect-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .eyebrow {
   margin: 0;
   color: #92400e;
@@ -36,6 +61,12 @@ button {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.extension-control {
+  display: flex;
+  justify-content: flex-end;
+  margin: 6px 0 8px;
 }
 
 .service-tabs {
