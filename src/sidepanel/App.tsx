@@ -77,6 +77,9 @@ function HelpIcon() {
   );
 }
 
+const CURRENT_TOOLTIP_TEXT =
+  "현재 보고 있는 채팅방에서 저장한 핀만 목록에 표시합니다. 끄면 같은 서비스의 다른 채팅방에서 저장한 핀도 함께 볼 수 있습니다.";
+
 async function getCurrentTabId(): Promise<number | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab?.id ?? null;
@@ -562,23 +565,19 @@ export function App() {
             </button>
           ))}
         </div>
-        <div className="search-controls">
-          <input
-            className="search-input"
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search pins"
-            type="search"
-            value={searchQuery}
-          />
+        <div className={`search-controls ${siteFilter === "all" ? "search-only" : ""}`}>
           {siteFilter !== "all" ? (
             <div className="current-control">
               <label className="current-toggle" htmlFor="current-chat-toggle">
                 <span>Current</span>
-                <span className="tooltip-anchor" tabIndex={0}>
+                <span
+                  aria-label={CURRENT_TOOLTIP_TEXT}
+                  className="tooltip-anchor"
+                  role="img"
+                  tabIndex={0}
+                  title={CURRENT_TOOLTIP_TEXT}
+                >
                   <HelpIcon />
-                  <span className="tooltip-bubble">
-                    현재 보고 있는 채팅방에서 저장한 핀만 목록에 표시합니다. 끄면 같은 서비스의 다른 채팅방에서 저장한 핀도 함께 볼 수 있습니다.
-                  </span>
                 </span>
                 <span className={`switch ${currentChatOnly ? "active" : ""}`}>
                   <input
@@ -594,6 +593,13 @@ export function App() {
               </label>
             </div>
           ) : null}
+          <input
+            className="search-input"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search pins"
+            type="search"
+            value={searchQuery}
+          />
         </div>
       </header>
 
